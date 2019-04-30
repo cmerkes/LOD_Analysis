@@ -729,11 +729,11 @@ ggOut <- ggplot(data=DAT[DAT$Target==Targets[i]&is.na(DAT$SQ)==F,],
   ylab("Cq-value") +
   geom_abline(intercept=coef(get(curve.list[i+1]))[1],
               slope=coef(get(curve.list[i+1]))[2]) +
-  geom_vline(xintercept=DAT3$LOD[16],linetype=2) +
-  geom_vline(xintercept=DAT3$LOQ[16],colour="red") +
-  annotate("text",y=max(DAT$Cq[DAT$Target==Targets[i]],na.rm=T)*0.99,
+  geom_vline(xintercept=DAT3$LOD[16],colour="red") +
+  geom_vline(xintercept=DAT3$LOQ[16],linetype=2) +
+  annotate("text",y=max(DAT$Cq[DAT$Target==Targets[i]],na.rm=T)*0.99,color="red",
            x=DAT3$LOD[16]*0.8,angle=90,label="LOD",size=2) +
-  annotate("text",y=max(DAT$Cq[DAT$Target==Targets[i]],na.rm=T)*0.94,color="red",
+  annotate("text",y=max(DAT$Cq[DAT$Target==Targets[i]],na.rm=T)*0.94,
            x=DAT3$LOQ[16]*0.8,angle=90,label="LOQ",size=2) +
   theme_bw() + theme(legend.justification=c(1,1),legend.position=c(1,0.99)) +
   ggtitle(paste0("Standard curve for: ",Targets[i])) +
