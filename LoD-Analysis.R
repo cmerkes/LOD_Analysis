@@ -639,6 +639,20 @@ DAT3[DAT3$LOQ==max(DAT3$LOQ),]
 mean(DAT3$LOQ)
 sd(DAT3$LOQ)
 
+## Determine the range of LOD shifts when using different models:
+LOD.min <- rep(NA,36)
+LOD.max <- rep(NA,36)
+COMP.DAT$Assay <- as.numeric(as.character(COMP.DAT$Assay))
+for(i in 1:36) {
+  LOD.min[i] <- min(COMP.DAT$LOD[COMP.DAT$Assay==i],na.rm=T)
+  LOD.max[i] <- max(COMP.DAT$LOD[COMP.DAT$Assay==i],na.rm=T)
+}
+LOD.fold <- LOD.max/LOD.min
+mean(LOD.fold,na.rm=T)
+sd(LOD.fold,na.rm=T)
+min(LOD.fold,na.rm=T)
+max(LOD.fold,na.rm=T)
+
 ## Rearrange data and plot Effective LOD vs number of reps:
 DAT5 <- data.frame(Assay=rep(DAT3$Assay,6),LOD=c(DAT3$LOD,DAT3$rep2.LOD,DAT3$rep3.LOD,
                     DAT3$rep4.LOD,DAT3$rep5.LOD,DAT3$rep8.LOD),Reps=c(rep(1,36),
@@ -648,7 +662,7 @@ LODvREP <- ggplot(data=DAT5,aes(x=Reps,y=LOD,color=Assay,group=Assay)) +
   geom_point(stat="summary",fun.y=sum) +
   stat_summary(fun.y=sum,geom="line") +
   scale_y_log10() +
-  ylab("Effective LOD") +
+  ylab("Effective LOD (copies / reaction)") +
   xlab("Number of Replicates Analyzed") +
   theme(text=element_text(size=8),
         axis.text=element_text(size=8),
@@ -715,12 +729,12 @@ ggOut <- ggplot(data=DAT[DAT$Target==Targets[i]&is.na(DAT$SQ)==F,],
   ylab("Cq-value") +
   geom_abline(intercept=coef(get(curve.list[i+1]))[1],
               slope=coef(get(curve.list[i+1]))[2]) +
-  geom_vline(xintercept=DAT3$LOD[i],linetype=2) +
-  geom_vline(xintercept=DAT3$LOQ[i],colour="red") +
+  geom_vline(xintercept=DAT3$LOD[16],linetype=2) +
+  geom_vline(xintercept=DAT3$LOQ[16],colour="red") +
   annotate("text",y=max(DAT$Cq[DAT$Target==Targets[i]],na.rm=T)*0.99,
-           x=DAT3$LOD[i]*0.8,angle=90,label="LOD",size=2) +
+           x=DAT3$LOD[16]*0.8,angle=90,label="LOD",size=2) +
   annotate("text",y=max(DAT$Cq[DAT$Target==Targets[i]],na.rm=T)*0.94,color="red",
-           x=DAT3$LOQ[i]*0.8,angle=90,label="LOQ",size=2) +
+           x=DAT3$LOQ[16]*0.8,angle=90,label="LOQ",size=2) +
   theme_bw() + theme(legend.justification=c(1,1),legend.position=c(1,0.99)) +
   ggtitle(paste0("Standard curve for: ",Targets[i])) +
   theme(plot.title=element_text(hjust=0.5,size=9),
@@ -729,22 +743,42 @@ ggOut <- ggplot(data=DAT[DAT$Target==Targets[i]&is.na(DAT$SQ)==F,],
         legend.text=element_text(size=6)) +
   annotate("text",y=min(DAT$Cq[DAT$Target==Targets[i]&is.na(DAT$SQ)==F],na.rm=T)*1.05,
            x=min(DAT$SQ[DAT$Target==Targets[i]&is.na(DAT$SQ)==F],na.rm=T)*1.01,hjust=0,
-           label=(paste0("R-squared: ",DAT3$R.squared[i],"\ny = ",DAT3$Slope[i],"x + ",DAT3$Intercept[i])),
+           label=(paste0("R-squared: ",DAT3$R.squared[16],"\ny = ",DAT3$Slope[16],"x + ",DAT3$Intercept[16])),
            size=2)
 
 png(filename="BH1-example.png",width=6.5,height=4,units="in",res=300)
-plot_grid(ggOut,BH1.LOD,LOQ.Plot27,ncol=2,nrow=2)
+plot_grid(ggOut,BH1.LOD,LOQ.Plot27,ncol=2,nrow=2,labels=c("A","B","C"),hjust=0.05)
 dev.off()
+
+## Determine discrete LOQ:
+DAT3$LOQ2 <- rep(NA,nrow(DAT3))
+for(i in 1:36) {
+  TD2 <- DAT2[DAT2$Target==i,]
+  if(sum(TD2$Cq.CV<0.35,na.rm=T)>0) {
+    TD3 <- max(TD2$Standards[TD2$Cq.CV>0.35],na.rm=T)
+    DAT3$LOQ2[DAT3$Assay==i] <- min(TD2$Standards[TD2$Standards>TD3],na.rm=T)
+  }
+  if(i==8) {
+    TD3 <- max(TD2$Standards[TD2$Cq.CV>0.783],na.rm=T)
+    DAT3$LOQ2[DAT3$Assay==i] <- min(TD2$Standards[TD2$Standards>TD3],na.rm=T)
+  }
+  if(i==31) {
+    TD3 <- max(TD2$Standards[TD2$Cq.CV>0.512],na.rm=T)
+    DAT3$LOQ2[DAT3$Assay==i] <- min(TD2$Standards[TD2$Standards>TD3],na.rm=T)
+  }
+}
 
 ## Rearrange and export Table 1:
 TarMatch <- TarMatch[order(TarMatch[,2]),]
 TarMatch$Modeled.LOD <- DAT3$LOD[match(TarMatch[,2],DAT3$Assay)]
-TarMatch$Threshold.LOD <- DAT3$Low.95[match(TarMatch[,2],DAT3$Assay)]
-TarMatch$LOQ <- DAT3$LOQ[match(TarMatch[,2],DAT3$Assay)]
+TarMatch$Discrete.LOD <- DAT3$Low.95[match(TarMatch[,2],DAT3$Assay)]
+TarMatch$Modeled.LOQ <- DAT3$LOQ[match(TarMatch[,2],DAT3$Assay)]
+TarMatch$Discrete.LOQ <- DAT3$LOQ2[match(TarMatch[,2],DAT3$Assay)]
 TarMatch$Lab <- c(rep("CERC",4),rep("ERDC",2),"MNRF","NWRC",rep("UMESC",5),
                   rep("UVIC",11),rep("WGL",10),rep("WSU",2))
 TarMatch$Modeled.LOD <- signif(TarMatch$Modeled.LOD,digits=3)
-TarMatch$Threshold.LOD <- signif(TarMatch$Threshold.LOD,digits=3)
-TarMatch$LOQ <- signif(TarMatch$LOQ,digits=3)
-TarMatch <- TarMatch[,c(2,1,3:6)]
+TarMatch$Discrete.LOD <- signif(TarMatch$Discrete.LOD,digits=3)
+TarMatch$Modeled.LOQ <- signif(TarMatch$Modeled.LOQ,digits=3)
+TarMatch$Discrete.LOQ <- signif(TarMatch$Discrete.LOQ,digits=3)
+TarMatch <- TarMatch[,c(2,1,3:7)]
 write.csv(TarMatch,file="Table1.csv",row.names=F)
